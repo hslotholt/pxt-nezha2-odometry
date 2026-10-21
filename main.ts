@@ -6,7 +6,7 @@ namespace nezhaV2_odometry {
     let KFF_LEFT = 0.19;
     let KFF_RIGHT = 0.19;
     let KP_Speed = 0.1;
-    let KP_Sync = 0.1;
+    let KP_Sync = 0.08;
     let KI_Speed = 0.3;
     let KI_Sync = 0.3;
     let Integral_Limit = MAX_POWER;
@@ -18,7 +18,7 @@ namespace nezhaV2_odometry {
     let m_rightMotorDirection = -1;
     let m_rightSlaveMotor = nezhaV2.MotorPostion.M2;
     let m_motionPerDeg_mm = 175 / 360;
-    let m_wheelDistance_mm = 262;
+    let m_wheelDistance_mm = 451;
 
     let m_velocityLeft_mm_s = 0;
     let m_velocityRight_mm_s = 0;
