@@ -546,11 +546,10 @@ namespace nezhaV2_odometry {
     }
 
     //% blockId="robot_rotate"
-    //% block="Drej på stedet $turn $degrees °"
-    //% degrees.defl=90 degrees.min=0
-    export function rotate(turn: TurnDirection, degrees: number): void {
+    //% block="Drej på stedet $turn $degrees ° med hastighed $degreesPerSecond"
+    //% degrees.defl=90 degrees.min=0 degreesPerSecond.defl=20 degreesPerSecond.min = 1
+    export function rotate(turn: TurnDirection, degrees: number, degreesPerSecond: number): void {
         beginMotion();
-        let degreesPerSecond = 20;
         if (degrees <= 0 || degreesPerSecond <= 0) return;
         goal = degrees * Math.PI / 180;
         commandedSpeed = degreesPerSecond * Math.PI / 180;
