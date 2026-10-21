@@ -16,7 +16,7 @@ namespace nezhaV2_odometry {
     let m_rightMainMotor = nezhaV2.MotorPostion.M1;
     let m_rightMotorDirection = -1;
     let m_rightSlaveMotor = nezhaV2.MotorPostion.M2;
-    let m_motionPerDeg_mm = 175;
+    let m_motionPerDeg_mm = 175 / 360;
     let m_wheelDistance_mm = 262;
 
     let m_velocityLeft_mm_s = 0;
