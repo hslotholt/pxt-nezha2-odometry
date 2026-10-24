@@ -378,6 +378,8 @@ namespace nezhaV2_odometry {
     let settledAt = -1;
     let lastSuccess = true;
     let provider: () => boolean = null;
+    let providerCompleted: () => boolean = null;
+    let externalStopCondition: () => boolean = null;
     let externalSpeed = 0;
     let externalTurn = 0;
 
@@ -386,6 +388,8 @@ namespace nezhaV2_odometry {
         mode = 0;
         commandId++;
         provider = null;
+        providerCompleted = null;
+        externalStopCondition = null;
         lastSuccess = false;
     }
 
@@ -427,6 +431,15 @@ namespace nezhaV2_odometry {
     }
 
     function stepMotion(): void {
+        if (externalStopCondition) {
+            let id = commandId;
+            let reached = externalStopCondition();
+            if (id != commandId || mode == 0) return;
+            if (reached) {
+                finishMotion(true);
+                return;
+            }
+        }
         if (!m_encoderInitialized) {
             finishMotion(false);
             return;
@@ -436,8 +449,12 @@ namespace nezhaV2_odometry {
             return;
         }
         if (mode == 3) {
-            if (!provider || !provider()) {
-                finishMotion(false);
+            let id = commandId;
+            let continueRunning = provider && provider();
+            // A callback may have been cancelled/replaced while yielding.
+            if (id != commandId || mode != 3) return;
+            if (!continueRunning) {
+                finishMotion(providerCompleted ? providerCompleted() : false);
                 return;
             }
             controlVelocity(externalSpeed, externalTurn);
@@ -562,19 +579,34 @@ namespace nezhaV2_odometry {
 
     // Adapter API: callback runs in the SAME loop as motor I/O.
     // Return false to stop. Do not pause or issue movement commands in callback.
-    export function startExternalController(update: () => boolean): void {
+    export function startExternalController(update: () => boolean, completed: () => boolean = null): void {
         beginMotion();
         provider = update;
+        providerCompleted = completed;
         externalSpeed = 0;
         externalTurn = 0;
         finiteMove = false;
         mode = 3;
     }
 
+    // Wait for the current command only; replacement or stop releases the wait.
+    export function waitUntilMotionFinished(): void {
+        waitForCommand(commandId);
+    }
+
     export function setExternalVelocity(speed: number, turnRate: number): void {
         externalSpeed = speed;
         externalTurn = turnRate;
     }
+
+    // Optional TypeScript API. Register AFTER starting a nonblocking movement.
+    // Called once per motor tick; must return quickly without waiting.
+    // Stop or a new movement automatically clears the condition.
+    export function stopWhen(condition: () => boolean): void {
+        if (mode != 0) externalStopCondition = condition;
+    }
+
+    export function clearStopCondition(): void { externalStopCondition = null; }
 
     //% blockId="robot_busy"
     //% block="robotten kører?"
