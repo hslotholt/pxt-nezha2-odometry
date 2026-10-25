@@ -579,10 +579,10 @@ namespace nezhaV2_odometry {
     // Left/right refers to the direction the robot's FRONT turns, also in reverse.
     //% blockId="robot_startCircle"
     //% block="Start cirkel $direction mod $turn og Ø $diameter mm med hastighed $speed mm/s"
-    //% radius.defl=300 radius.min=150 speed.defl=150 speed.min=1
+    //% diameter.defl=300 diameter.min=150 speed.defl=150 speed.min=1
     export function startCircle(direction: TravelDirection, turn: TurnDirection,
         diameter: number, speed: number): void {
-        if (diameter < 150) { stop(); return; }
+        if (diameter < 300) { stop(); return; }
         let k = (turn == TurnDirection.Left ? 1 : -1) *
             (direction == TravelDirection.Forward ? 1 : -1) / (diameter / 2);
         startPath(direction, speed, k, 0, false);
@@ -591,7 +591,7 @@ namespace nezhaV2_odometry {
     // Arc completion is based on centre travel, not final heading.
     //% blockId="robot_driveArc"
     //% block="Kør $direction i bue mod $turn og Ø $diameter mm gennem $degrees ° med hastighed $speed mm/s || ved afslutning $endAction"
-    //% radius.defl=300 radius.min=150 degrees.defl=90 degrees.min=0 speed.defl=150 speed.min=1
+    //% diameter.defl=300 diameter.min=300 degrees.defl=90 degrees.min=0 speed.defl=150 speed.min=1
     export function driveArc(direction: TravelDirection, turn: TurnDirection,
         diameter: number, degrees: number, speed: number, endAction: EndAction = EndAction.Stop): void {
         if (diameter < 300 || degrees < 0) { stop(); return; }
