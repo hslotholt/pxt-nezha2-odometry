@@ -1,5 +1,12 @@
 //% color=#2876A8 icon="\uf1b9" block="Robot"
 namespace nezhaV2_odometry {
+    export enum EndAction {
+        //% block="stop"
+        Stop = 0,
+        //% block="fortsæt"
+        Continue = 1
+    }
+
     const MAX_POWER = 100;
     const MAX_CURVATURE = 1 / 150 // minimum radius: 150 mm
     const VELOCITY_FILTER_TIME_s = 0.08;
@@ -37,6 +44,8 @@ namespace nezhaV2_odometry {
     let m_powerIntegralCommon = 0;
     let m_powerIntegralSync = 0;
 
+    let m_lastTargetSpeed = 0;
+    let m_lastTargetTurn = 0;
     let m_debugTime = -1;
     let m_encoderInitialized = false;
     let m_controlInitialized = false;
@@ -67,9 +76,9 @@ namespace nezhaV2_odometry {
         return clamp(integral, -Integral_Limit, Integral_Limit);
     }
 
+    //% advanced=true
     //% blockId="odometry_driveController"
     //% block="Reguler hastighed $speed_mm_s mm/s, efter kurve $curvature 1/mm"
-    //% advanced=true
     export function driveController(speed_mm_s: number, curvature: number): void {
         let k = clamp(curvature, -MAX_CURVATURE, MAX_CURVATURE);
         controlVelocity(speed_mm_s, speed_mm_s * k);
@@ -94,6 +103,8 @@ namespace nezhaV2_odometry {
             m_powerIntegralSync = 0;
             dt = 0;
         }
+        m_lastTargetSpeed = speed_mm_s;
+        m_lastTargetTurn = turnRate_rad_s;
         let targetL = speed_mm_s - turnRate_rad_s * m_wheelDistance_mm / 2;
         let targetR = speed_mm_s + turnRate_rad_s * m_wheelDistance_mm / 2;
         let predictedLeft = KFF_LEFT * targetL;
@@ -177,9 +188,9 @@ namespace nezhaV2_odometry {
         m_odomHeading = normalizeAngle(m_odomHeading + deltaHeading);
     }
 
+    //% advanced=true
     //% blockId="odometry_updateEncoder"
     //% block="Opdater odometri"
-    //% advanced=true
     export function updateEncoder(): void {
         if (m_leftMainMotor <= 0 ||
             m_rightMainMotor <= 0 ||
@@ -220,7 +231,7 @@ namespace nezhaV2_odometry {
     }
 
     //% blockId="odometry_stop"
-    //% block="Stop motorer"
+    //% block="Stop"
     export function stop(): void {
         cancelMotion();
         if (m_leftMainMotor > 0)
@@ -238,11 +249,13 @@ namespace nezhaV2_odometry {
         m_powerIntegralCommon = 0;
         m_powerIntegralSync = 0;
         m_controlInitialized = false;
+        m_lastTargetSpeed = 0;
+        m_lastTargetTurn = 0;
     }
 
+    //% advanced=true
     //% blockId="odometry_resetOdometry"
     //% block="Nulstil odometri"
-    //% advanced=true
     export function resetOdometry(): void {
         stop();
         m_totalHeading = 0;
@@ -264,41 +277,41 @@ namespace nezhaV2_odometry {
         m_powerIntegralSync = 0;
     }
 
-    //% blockId="odometry_setLeftMotor"
-    //% block="Indstil venstre motor $motor til fremadgående retning $direction | slave motor $slaveMotor"
     //% advanced=true
+    //% blockId="odometry_setLeftMotor"
+    //% block="Indstil venstre motor $motor til fremadgående retning $direction || slave motor $slaveMotor"
     export function setLeftMotor(motor: nezhaV2.MotorPostion, direction: nezhaV2.MovementDirection, slaveMotor: nezhaV2.MotorPostion = 0): void {
         m_leftMainMotor = motor;
         m_leftMotorDirection = direction == nezhaV2.MovementDirection.CW ? 1 : -1;
         m_leftSlaveMotor = slaveMotor;
     }
 
-    //% blockId="odometry_setRightMotor"
-    //% block="Indstil højre motor $motor til fremadgående retning $direction | slave motor $slaveMotor"
     //% advanced=true
+    //% blockId="odometry_setRightMotor"
+    //% block="Indstil højre motor $motor til fremadgående retning $direction || slave motor $slaveMotor"
     export function setRightMotor(motor: nezhaV2.MotorPostion, direction: nezhaV2.MovementDirection, slaveMotor: nezhaV2.MotorPostion = 0): void {
         m_rightMainMotor = motor;
         m_rightMotorDirection = direction == nezhaV2.MovementDirection.CW ? 1 : -1;
         m_rightSlaveMotor = slaveMotor;
     }
 
+    //% advanced=true
     //% blockId="odometry_setMotionPerTurn"
     //% block="Indstil hjulrotation per motor omdrejning $motionPerTurn_mm mm"
-    //% advanced=true
     export function setMotionPerTurn(motionPerTurn_mm: number): void {
         if (motionPerTurn_mm > 0) m_motionPerDeg_mm = motionPerTurn_mm / 360;
     }
 
+    //% advanced=true
     //% blockId="odometry_setWheelDistance"
     //% block="Indstil afstand mellem hjul $wheelDistance_mm mm"
-    //% advanced=true
     export function setWheelDistance(wheelDistance_mm: number): void {
         if (wheelDistance_mm > 0) m_wheelDistance_mm = wheelDistance_mm;
     }
 
+    //% advanced=true
     //% blockId="odometry_setRegulationParameters"
     //% block="Indstil parametre $ffL $ffR $kpSpeed $kiSpeed $kpSync $kiSync"
-    //% advanced=true
     export function setRegulationParameters(ffL: number, ffR: number, kpSpeed: number, kiSpeed: number, kpSync: number, kiSync: number): void {
         KFF_LEFT = ffL;
         KFF_RIGHT = ffR;
@@ -310,41 +323,38 @@ namespace nezhaV2_odometry {
         m_powerIntegralSync = 0;
     }
 
+    //% advanced=true
     //% blockId="odometry_getOdoX"
     //% block="X position mm"
-    //% advanced=true
     export function getOdoX(): number {
         return m_odomX_mm;
     }
 
+    //% advanced=true
     //% blockId="odometry_getOdoY"
     //% block="Y position mm"
-    //% advanced=true
     export function getOdoY(): number {
         return m_odomY_mm;
     }
 
+    //% advanced=true
     //% blockId="odometry_getHeading"
     //% block="Retning grader"
-    //% advanced=true
     export function getHeading(): number {
         return m_odomHeading * 180 / Math.PI;
     }
 
     //% blockId="odometry_getTrip"
     //% block="Trip mm"
-    //% advanced=true
     export function getTrip(): number {
         return m_centerTravel_mm;
     }
 
     //% blockId="odometry_getSpeed"
     //% block="Hastighed mm/s"
-    //% advanced=true
     export function getSpeed(): number {
         return (m_velocityLeft_mm_s + m_velocityRight_mm_s) / 2;
     }
-
 
     export enum TravelDirection {
         //% block="fremad"
@@ -361,7 +371,10 @@ namespace nezhaV2_odometry {
     const PERIOD_MS = 40;
     const HEADING_GAIN = 0.015;
     const LATERAL_GAIN = 0.0001;
-    let mode = 0; // 0 stopped, 1 path, 2 rotation, 3 external provider
+    let mode = 0; // 0 stopped, 1 path, 2 rotation, 3 external provider, 4 hold velocity
+    let motionEndAction = EndAction.Stop;
+    let holdSpeed = 0;
+    let holdTurn = 0;
     let commandId = 0;
     let loopStarted = false;
     let finiteMove = false;
@@ -386,6 +399,7 @@ namespace nezhaV2_odometry {
     // Called by stop() in main.ts. Invalidates every old waiting command.
     function cancelMotion(): void {
         mode = 0;
+        motionEndAction = EndAction.Stop;
         commandId++;
         provider = null;
         providerCompleted = null;
@@ -393,8 +407,11 @@ namespace nezhaV2_odometry {
         lastSuccess = false;
     }
 
-    function beginMotion(): void {
-        stop();
+    function beginMotion(forceStop: boolean = false): void {
+        // A new driving command takes over without clearing PI state or power.
+        // Starting from idle and every in-place rotation still stop explicitly.
+        if (forceStop || mode == 0) stop();
+        else cancelMotion();
         updateEncoder();
         startTrip = m_centerTravel_mm;
         startAngle = m_totalHeading;
@@ -416,9 +433,20 @@ namespace nezhaV2_odometry {
         }
     }
 
-    function finishMotion(success: boolean): void {
-        stop();
-        lastSuccess = success;
+    function finishMotion(success: boolean, endAction: EndAction = EndAction.Stop): void {
+        if (success && endAction == EndAction.Continue) {
+            // Complete the blocking command but keep motor regulation running.
+            // Freeze speed AND turn rate, including the last steering correction.
+            holdSpeed = m_lastTargetSpeed;
+            holdTurn = m_lastTargetTurn;
+            cancelMotion(); // releases waits and clears old provider/stop condition
+            finiteMove = false;
+            lastSuccess = true;
+            mode = 4;
+        } else {
+            stop();
+            lastSuccess = success;
+        }
     }
 
     function settled(condition: boolean): boolean {
@@ -448,13 +476,17 @@ namespace nezhaV2_odometry {
             finishMotion(false);
             return;
         }
+        if (mode == 4) {
+            controlVelocity(holdSpeed, holdTurn);
+            return;
+        }
         if (mode == 3) {
             let id = commandId;
             let continueRunning = provider && provider();
             // A callback may have been cancelled/replaced while yielding.
             if (id != commandId || mode != 3) return;
             if (!continueRunning) {
-                finishMotion(providerCompleted ? providerCompleted() : false);
+                finishMotion(providerCompleted ? providerCompleted() : false, motionEndAction);
                 return;
             }
             controlVelocity(externalSpeed, externalTurn);
@@ -475,13 +507,19 @@ namespace nezhaV2_odometry {
         if (finiteMove) {
             let progress = (commandedSpeed >= 0 ? 1 : -1) * (m_centerTravel_mm - startTrip);
             let remaining = goal - progress;
-            if (settled(remaining <= 2 && Math.abs(m_velocityLeft_mm_s) < 5 &&
+            if (motionEndAction == EndAction.Continue && remaining <= 0) {
+                finishMotion(true, EndAction.Continue);
+                return;
+            }
+            if (motionEndAction == EndAction.Stop && settled(remaining <= 2 && Math.abs(m_velocityLeft_mm_s) < 5 &&
                 Math.abs(m_velocityRight_mm_s) < 5)) {
                 finishMotion(true);
                 return;
             }
-            speed = (commandedSpeed >= 0 ? 1 : -1) *
-                Math.min(Math.abs(commandedSpeed), Math.max(0, 3 * remaining));
+            if (motionEndAction == EndAction.Stop) {
+                speed = (commandedSpeed >= 0 ? 1 : -1) *
+                    Math.min(Math.abs(commandedSpeed), Math.max(0, 3 * remaining));
+            }
         }
         let refHeading = startHeading;
         let refX = startX;
@@ -506,9 +544,10 @@ namespace nezhaV2_odometry {
     }
 
     function startPath(direction: TravelDirection, speed: number, curvature: number,
-        distance: number, limited: boolean): void {
+        distance: number, limited: boolean, endAction: EndAction = EndAction.Stop): void {
+        if (speed <= 0 || (limited && distance <= 0)) { stop(); return; }
         beginMotion();
-        if (speed <= 0 || (limited && distance <= 0)) return;
+        motionEndAction = endAction;
         commandedSpeed = (direction == TravelDirection.Forward ? 1 : -1) * speed;
         pathCurvature = curvature;
         finiteMove = limited;
@@ -518,47 +557,48 @@ namespace nezhaV2_odometry {
     }
 
     function waitForCommand(id: number): void {
-        while (mode != 0 && commandId == id) basic.pause(10);
+        while (mode != 0 && mode != 4 && commandId == id) basic.pause(10);
     }
 
     //% blockId="robot_startStraight"
-    //% block="Start kørsel $direction med $speed mm/s"
+    //% block="Start kørsel $direction med hastighed $speed mm/s"
     //% speed.defl=150 speed.min=1
     export function startStraight(direction: TravelDirection, speed: number): void {
         startPath(direction, speed, 0, 0, false);
     }
 
     //% blockId="robot_driveDistance"
-    //% block="Kør $direction $distance mm med $speed mm/s"
+    //% block="Kør $direction i $distance mm med hastighed $speed mm/s || ved afslutning $endAction"
     //% distance.defl=300 distance.min=0 speed.defl=150 speed.min=1
-    export function driveDistance(direction: TravelDirection, distance: number, speed: number): void {
-        startPath(direction, speed, 0, distance, true);
+    export function driveDistance(direction: TravelDirection, distance: number, speed: number,
+        endAction: EndAction = EndAction.Stop): void {
+        startPath(direction, speed, 0, distance, true, endAction);
         waitForCommand(commandId);
     }
 
     // Left/right refers to the direction the robot's FRONT turns, also in reverse.
-    // Radius is measured to the centre of the axle. Minimum 150 mm.
     //% blockId="robot_startCircle"
-    //% block="Start cirkel $direction mod $turn radius $radius mm med $speed mm/s"
+    //% block="Start cirkel $direction mod $turn og Ø $diameter mm med hastighed $speed mm/s"
     //% radius.defl=300 radius.min=150 speed.defl=150 speed.min=1
     export function startCircle(direction: TravelDirection, turn: TurnDirection,
-        radius: number, speed: number): void {
-        if (radius < 150) { stop(); return; }
+        diameter: number, speed: number): void {
+        if (diameter < 150) { stop(); return; }
         let k = (turn == TurnDirection.Left ? 1 : -1) *
-            (direction == TravelDirection.Forward ? 1 : -1) / radius;
+            (direction == TravelDirection.Forward ? 1 : -1) / (diameter / 2);
         startPath(direction, speed, k, 0, false);
     }
 
     // Arc completion is based on centre travel, not final heading.
     //% blockId="robot_driveArc"
-    //% block="Kør $direction i bue mod $turn radius $radius mm gennem $degrees ° med $speed mm/s"
+    //% block="Kør $direction i bue mod $turn og Ø $diameter mm gennem $degrees ° med hastighed $speed mm/s || ved afslutning $endAction"
     //% radius.defl=300 radius.min=150 degrees.defl=90 degrees.min=0 speed.defl=150 speed.min=1
     export function driveArc(direction: TravelDirection, turn: TurnDirection,
-        radius: number, degrees: number, speed: number): void {
-        if (radius < 150 || degrees < 0) { stop(); return; }
+        diameter: number, degrees: number, speed: number, endAction: EndAction = EndAction.Stop): void {
+        if (diameter < 300 || degrees < 0) { stop(); return; }
+        let radius = diameter / 2;
         let k = (turn == TurnDirection.Left ? 1 : -1) *
             (direction == TravelDirection.Forward ? 1 : -1) / radius;
-        startPath(direction, speed, k, radius * degrees * Math.PI / 180, true);
+        startPath(direction, speed, k, radius * degrees * Math.PI / 180, true, endAction);
         waitForCommand(commandId);
     }
 
@@ -566,7 +606,7 @@ namespace nezhaV2_odometry {
     //% block="Drej på stedet $turn $degrees ° med hastighed $degreesPerSecond"
     //% degrees.defl=90 degrees.min=0 degreesPerSecond.defl=20 degreesPerSecond.min = 1
     export function rotate(turn: TurnDirection, degrees: number, degreesPerSecond: number): void {
-        beginMotion();
+        beginMotion(true);
         if (degrees <= 0 || degreesPerSecond <= 0) return;
         goal = degrees * Math.PI / 180;
         commandedSpeed = degreesPerSecond * Math.PI / 180;
@@ -579,8 +619,10 @@ namespace nezhaV2_odometry {
 
     // Adapter API: callback runs in the SAME loop as motor I/O.
     // Return false to stop. Do not pause or issue movement commands in callback.
-    export function startExternalController(update: () => boolean, completed: () => boolean = null): void {
+    export function startExternalController(update: () => boolean, completed: () => boolean = null,
+        endAction: EndAction = EndAction.Stop): void {
         beginMotion();
+        motionEndAction = endAction;
         provider = update;
         providerCompleted = completed;
         externalSpeed = 0;
@@ -593,6 +635,9 @@ namespace nezhaV2_odometry {
     export function waitUntilMotionFinished(): void {
         waitForCommand(commandId);
     }
+
+    // Encoder baseline captured during beginMotion, before a new command drives.
+    export function getMotionStartTrip(): number { return startTrip; }
 
     export function setExternalVelocity(speed: number, turnRate: number): void {
         externalSpeed = speed;
