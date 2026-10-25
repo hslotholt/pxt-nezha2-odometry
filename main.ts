@@ -608,11 +608,37 @@ namespace nezhaV2_odometry {
     export function rotate(turn: TurnDirection, degrees: number, degreesPerSecond: number): void {
         beginMotion(true);
         if (degrees <= 0 || degreesPerSecond <= 0) return;
-        goal = degrees * Math.PI / 180;
+        let angle = degrees * Math.PI / 180 * (turn == TurnDirection.Left ? 1 : -1);
+        executeRotation(angle, degreesPerSecond);
+    }
+
+    // Absolute odometry heading, NOT compass direction. Zero is the heading
+    // at resetOdometry. Positive headings turn left. Any degree value wraps.
+    //% blockId="robot_rotateToHeading"
+    //% block="Drej til retning $headingDegrees ° med hastighed $degreesPerSecond °/s"
+    //% headingDegrees.defl=0 headingDegrees.min=0 headingDegrees.max=359
+    //% degreesPerSecond.defl=20 degreesPerSecond.min=1
+    export function rotateToHeading(headingDegrees: number, degreesPerSecond: number = 20): void {
+        // Stop and refresh encoders BEFORE deciding the shortest direction.
+        beginMotion(true);
+        if (degreesPerSecond <= 0) return;
+        let angle = normalizeAngle(headingDegrees * Math.PI / 180 - m_odomHeading);
+        if (Math.abs(angle) <= Math.PI / 180) {
+            finishMotion(true);
+            return;
+        }
+        // normalizeAngle chooses right at an exact 180-degree tie.
+        executeRotation(angle, degreesPerSecond);
+    }
+
+    // beginMotion(true) must already have captured the current total angle.
+    // Both public rotations always stop, have a timeout, and support cancellation.
+    function executeRotation(angle: number, degreesPerSecond: number): void {
+        goal = Math.abs(angle);
         commandedSpeed = degreesPerSecond * Math.PI / 180;
-        turnSign = turn == TurnDirection.Left ? 1 : -1;
+        turnSign = angle >= 0 ? 1 : -1;
         finiteMove = true;
-        deadline = input.runningTime() + 5000 + 4000 * degrees / degreesPerSecond;
+        deadline = input.runningTime() + 5000 + 4000 * goal / commandedSpeed;
         mode = 2;
         waitForCommand(commandId);
     }
